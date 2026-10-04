@@ -96,6 +96,10 @@ uint64_t KYTY_SYSV_ABI KernelGetProcessTime() {
 }
 } // namespace Libs::LibKernel
 
+namespace Libs::Automation {
+void NotePadRead() {}
+} // namespace Libs::Automation
+
 namespace Loader::Timer {
 double GetTimeMs() {
 	return static_cast<double>(now);

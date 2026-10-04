@@ -16,9 +16,11 @@
 #include "graphics/host_gpu/renderer/render.h"
 #include "graphics/host_gpu/renderer/renderContext.h"
 #include "graphics/shader/recompiler/ShaderRecompiler.h"
+#include "graphics/shader/shaderCapture.h"
 #include "graphics/shader/shaderCompiler.h"
 #include "kernel/memory.h"
 #include "kytyGitVersion.h"
+#include "libs/automation.h"
 #include "loader/systemContent.h"
 
 #include <algorithm>
@@ -104,18 +106,44 @@ void PipelineCacheLog(fmt::format_string<Args...> format, Args&&... args) {
 }
 
 bool ReadShaderGuestMemory(void*, uint64_t address, std::span<uint32_t> values) {
-	return !values.empty() &&
-	       Libs::LibKernel::Memory::TryReadGpuCleanBacking(address, values.data(), values.size_bytes());
+	const bool ok = !values.empty() && Libs::LibKernel::Memory::TryReadGpuCleanBacking(
+	                                       address, values.data(), values.size_bytes());
+	if (!values.empty()) {
+		// No-op unless the program being prepared is being captured for offline replay.
+		ShaderCapture::RecordRead(address, values, ok);
+	}
+	return ok;
+}
+
+// Ordinary scalar reads, such as the SRT walk, otherwise copy from the guest address directly.
+// Going through a reader records them in a shader capture; the read itself is the same.
+bool ReadShaderGuestMemoryDirect(void*, uint64_t address, std::span<uint32_t> values) {
+	std::memcpy(values.data(), reinterpret_cast<const void*>(address), values.size_bytes());
+	if (!values.empty()) {
+		// No-op unless the program being prepared is being captured for offline replay.
+		ShaderCapture::RecordRead(address, values, true);
+	}
+	return true;
 }
 
 bool ReadAheadPlain(void* userdata, uint64_t address, std::span<uint32_t> values) {
-	return !values.empty() && static_cast<GuestReadLog*>(userdata)->Read(
-	                              address, values.data(), values.size_bytes(), false);
+	const bool ok = !values.empty() && static_cast<GuestReadLog*>(userdata)->Read(
+	                                       address, values.data(), values.size_bytes(), false);
+	if (!values.empty()) {
+		// As ReadShaderGuestMemory: only a compile worker's capture is active on this thread.
+		ShaderCapture::RecordRead(address, values, ok);
+	}
+	return ok;
 }
 
 bool ReadAheadStrict(void* userdata, uint64_t address, std::span<uint32_t> values) {
-	return !values.empty() && static_cast<GuestReadLog*>(userdata)->Read(address, values.data(),
-	                                                                     values.size_bytes(), true);
+	const bool ok = !values.empty() && static_cast<GuestReadLog*>(userdata)->Read(
+	                                       address, values.data(), values.size_bytes(), true);
+	if (!values.empty()) {
+		// As ReadShaderGuestMemory: only a compile worker's capture is active on this thread.
+		ShaderCapture::RecordRead(address, values, ok);
+	}
+	return ok;
 }
 
 bool ReadAheadShaderState(void* userdata, uint64_t address, void* data, uint64_t size) {
@@ -531,6 +559,7 @@ struct PipelineCache::ProgramCache {
 		const ShaderRecompiler::IR::SrtRuntime       runtime {
 		    .user_data                  = user_data,
 		    .shader_base                = params.Base(),
+		    .read_memory                = ReadShaderGuestMemoryDirect,
 		    .read_specialization_memory = ReadShaderGuestMemory,
 		};
 		if (entry != programs.end()) {
@@ -559,7 +588,24 @@ struct PipelineCache::ProgramCache {
 		}
 		const auto [options, stage_name] = MakeCompileOptions(stage, params, input_info);
 		DumpShaderOriginal(stage_name, options.shader_hash, params.code);
+		Automation::NoteShaderCompile(options.shader_hash, stage_name);
 		const auto push_data_start = push_data_cursor;
+		// Capture before compiling: whichever stage fails or crashes next, the files are on disk.
+		std::optional<ShaderCapture> capture;
+		if (entry == programs.end() && Config::ShaderCaptureEnabled()) {
+			const ShaderCaptureSource source {
+			    .stage          = stage,
+			    .hash           = params.hash,
+			    .wave_size      = options.wave_size,
+			    .user_data_base = options.user_data_base,
+			    .shader_base    = params.Base(),
+			    .code           = params.code,
+			    .back_code      = params.back_code,
+			    .user_data      = user_data,
+			    .static_state   = lookup_key.static_state,
+			};
+			capture.emplace(source, input_info);
+		}
 		auto translated = ShaderRecompiler::TranslateProgram(params.code, options);
 		if (entry == programs.end()) {
 			entry = programs.try_emplace(lookup_key,
@@ -700,6 +746,25 @@ struct PipelineCache::ProgramCache {
 			Common::SoftExitScope soft_exit(true);
 			const auto [options, stage_name] =
 			    MakeCompileOptions(job.stage, job.params, input_info);
+			Automation::NoteShaderCompile(options.shader_hash, stage_name);
+			// A program no draw has compiled yet (a job with a specialization adds a permutation,
+			// or reloads a program of an earlier session). Captured before compiling, as the
+			// execution thread does, so a crash or hang in this worker leaves the files.
+			std::optional<ShaderCapture> capture;
+			if (!job.specialization && Config::ShaderCaptureEnabled()) {
+				const ShaderCaptureSource source {
+				    .stage          = job.stage,
+				    .hash           = job.params.hash,
+				    .wave_size      = options.wave_size,
+				    .user_data_base = options.user_data_base,
+				    .shader_base    = job.params.Base(),
+				    .code           = job.params.code,
+				    .back_code      = job.params.back_code,
+				    .user_data = std::span(job.params.user_data).first(job.params.user_data_count),
+				    .static_state = job.key.static_state,
+				};
+				capture.emplace(source, input_info);
+			}
 			auto translated = ShaderRecompiler::TranslateProgram(job.params.code, options);
 			plan                = ShaderRecompiler::IR::ExtractResourcePlan(translated.program);
 			auto specialization = job.specialization;

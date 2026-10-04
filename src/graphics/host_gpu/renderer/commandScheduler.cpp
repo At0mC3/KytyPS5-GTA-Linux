@@ -5,6 +5,7 @@
 #include "common/emulatorConfig.h"
 #include "common/profiler.h"
 #include "graphics/host_gpu/graphicContext.h"
+#include "libs/automation.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -123,9 +124,11 @@ CommandScheduler::CommandScheduler(RenderContext& context, GraphicContext& graph
 		    [] { Config::ConfigureGpuStageThread(Config::GpuStageThread::HostCopy); });
 		m_recording_thread = std::jthread([this] { RecordingThread(); });
 	}
+	Automation::RegisterGpuTicks(&m_master);
 }
 
 CommandScheduler::~CommandScheduler() {
+	Automation::UnregisterGpuTicks(&m_master);
 	Shutdown();
 }
 
@@ -542,6 +545,19 @@ void CommandScheduler::QueueSubmit(vk::CommandBuffer buffer, SubmitInfo& submit,
 		                  debug.debug_arg4);
 	}
 	EXIT_NOT_IMPLEMENTED(result != vk::Result::eSuccess);
+
+	// The submission reached the queue. A deferred scheduler gets here on its recording thread,
+	// so the heartbeat shows what the GPU was given, not what the execution thread recorded.
+	Automation::NoteGpuSubmit(tick, debug.debug_op, debug.debug_submit_id, debug.debug_arg0,
+	                          debug.debug_arg1, debug.debug_arg2, debug.debug_arg3,
+	                          debug.debug_arg4);
+	if (Config::GraphicsDebugDumpEnabled() || Automation::SubmitTraceEnabled()) {
+		LOGF("GPU submit: tick=%" PRIu64 " gpu_tick=%" PRIu64 " debug_op=%u debug_submit=%" PRIu64
+		     " args=%u,%u,%u,%u,0x%016" PRIx64 "\n",
+		     tick, m_master.KnownGpuTick(), debug.debug_op, debug.debug_submit_id,
+		     debug.debug_arg0, debug.debug_arg1, debug.debug_arg2, debug.debug_arg3,
+		     debug.debug_arg4);
+	}
 }
 
 void CommandScheduler::RecordingThread() {

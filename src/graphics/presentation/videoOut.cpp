@@ -18,6 +18,7 @@
 #include "graphics/presentation/presenter.h"
 #include "graphics/presentation/renderDoc.h"
 #include "kernel/pthread.h"
+#include "libs/automation.h"
 #include "libs/errno.h"
 #include "libs/libs.h"
 #include "loader/systemContent.h"
@@ -1297,6 +1298,7 @@ bool FlipQueue::Flip(uint32_t micros) {
 	m_mutex.Unlock();
 	unlock_ports();
 	if (due) {
+		Automation::NoteGuestFlip();
 		Graphics::RenderDocOnGuestFlip(m_presenter.Renderer());
 		if (Config::GraphicsDebugDumpEnabled() &&
 		    Config::GetPrintfDirection() != Config::LogDirection::Silent) {

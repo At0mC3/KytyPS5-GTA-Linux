@@ -88,6 +88,12 @@ struct ConfigOptions {
 	bool                   tessellation_enabled        = true;
 	bool                   playgo_hack_enabled         = false;
 	uint32_t               gpu_pipeline_stages         = GPU_PIPELINE_ALL;
+	// Empty means disabled. Every new shader program is written here before it is compiled.
+	std::filesystem::path  shader_capture_dir;
+	// Empty means disabled. Enables the command-file input, screenshot and heartbeat hooks.
+	std::filesystem::path  automation_dir;
+	// Seconds between automatic screenshots. Zero captures only on request.
+	uint32_t               automation_shot_interval    = 0;
 #if KYTY_PLATFORM == KYTY_PLATFORM_WINDOWS
 	bool red_zone_protection_enabled = true;
 #endif
@@ -154,6 +160,13 @@ enum class GpuStageThread : uint32_t {
 };
 // Applies the priority and affinity of `stage` to the calling thread.
 void ConfigureGpuStageThread(GpuStageThread stage);
+
+bool                  ShaderCaptureEnabled();
+std::filesystem::path GetShaderCaptureDir();
+
+bool                  AutomationEnabled();
+std::filesystem::path GetAutomationDir();
+uint32_t              GetAutomationShotInterval();
 #if KYTY_PLATFORM == KYTY_PLATFORM_WINDOWS
 bool RedZoneProtectionEnabled();
 #endif
