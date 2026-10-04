@@ -92,6 +92,7 @@ constexpr OpcodeMap VOP1_OPCODE_LIST[] = {
     {0x10u, Opcode::V_CVT_F64_F32},
     {0x16u, Opcode::V_CVT_F64_U32},
     {0x2fu, Opcode::V_RCP_F64},
+    {0x3eu, Opcode::V_FRACT_F64},
     {0x05u, Opcode::V_CVT_F32_I32},
     {0x06u, Opcode::V_CVT_F32_U32},
     {0x07u, Opcode::V_CVT_U32_F32},
@@ -156,6 +157,7 @@ constexpr OpcodeMap VOP3_ENCODED_VOP1_OPCODE_LIST[] = {
     {0x10u, Opcode::V_CVT_F64_F32},
     {0x16u, Opcode::V_CVT_F64_U32},
     {0x2fu, Opcode::V_RCP_F64},
+    {0x3eu, Opcode::V_FRACT_F64},
     {0x05u, Opcode::V_CVT_F32_I32},
     {0x06u, Opcode::V_CVT_F32_U32},
     {0x07u, Opcode::V_CVT_U32_F32},
@@ -252,16 +254,26 @@ constexpr VopcOpcodeInfo VOPC_OPCODE_LIST[] = {
     {0xc1u, Opcode::V_CMP_LT_U32},         {0xc2u, Opcode::V_CMP_EQ_U32},
     {0xc3u, Opcode::V_CMP_LE_U32},         {0xc4u, Opcode::V_CMP_GT_U32},
     {0xc5u, Opcode::V_CMP_NE_U32},         {0xc6u, Opcode::V_CMP_GE_U32},
-    {0xc7u, Opcode::V_CMP_T_U32},          {0xa2u, Opcode::V_CMP_EQ_I64, false},
-    {0xa1u, Opcode::V_CMP_LT_I64, false},  {0xa3u, Opcode::V_CMP_LE_I64, false},
-    {0xb5u, Opcode::V_CMPX_NE_I64, false}, {0xd1u, Opcode::V_CMPX_LT_U32},
+    {0xc7u, Opcode::V_CMP_T_U32},          {0xd1u, Opcode::V_CMPX_LT_U32},
     {0xd2u, Opcode::V_CMPX_EQ_U32},        {0xd3u, Opcode::V_CMPX_LE_U32},
     {0xd4u, Opcode::V_CMPX_GT_U32},        {0xd5u, Opcode::V_CMPX_NE_U32},
-    {0xd6u, Opcode::V_CMPX_GE_U32},        {0xe1u, Opcode::V_CMP_LT_U64, false},
-    {0xe2u, Opcode::V_CMP_EQ_U64, false},  {0xe3u, Opcode::V_CMP_LE_U64, false},
-    {0xe4u, Opcode::V_CMP_GT_U64, false},  {0xe5u, Opcode::V_CMP_NE_U64, false},
-    {0xe6u, Opcode::V_CMP_GE_U64, false},  {0xf3u, Opcode::V_CMPX_LE_U64, false},
-    {0xf5u, Opcode::V_CMPX_NE_U64, false}, {0xc9u, Opcode::V_CMP_LT_F16},
+    {0xd6u, Opcode::V_CMPX_GE_U32},        {0xa0u, Opcode::V_CMP_F_I64, false},
+    {0xa1u, Opcode::V_CMP_LT_I64, false},  {0xa2u, Opcode::V_CMP_EQ_I64, false},
+    {0xa3u, Opcode::V_CMP_LE_I64, false},  {0xa4u, Opcode::V_CMP_GT_I64, false},
+    {0xa5u, Opcode::V_CMP_NE_I64, false},  {0xa6u, Opcode::V_CMP_GE_I64, false},
+    {0xa7u, Opcode::V_CMP_T_I64, false},   {0xb0u, Opcode::V_CMPX_F_I64, false},
+    {0xb1u, Opcode::V_CMPX_LT_I64, false}, {0xb2u, Opcode::V_CMPX_EQ_I64, false},
+    {0xb3u, Opcode::V_CMPX_LE_I64, false}, {0xb4u, Opcode::V_CMPX_GT_I64, false},
+    {0xb5u, Opcode::V_CMPX_NE_I64, false}, {0xb6u, Opcode::V_CMPX_GE_I64, false},
+    {0xb7u, Opcode::V_CMPX_T_I64, false},  {0xe0u, Opcode::V_CMP_F_U64, false},
+    {0xe1u, Opcode::V_CMP_LT_U64, false},  {0xe2u, Opcode::V_CMP_EQ_U64, false},
+    {0xe3u, Opcode::V_CMP_LE_U64, false},  {0xe4u, Opcode::V_CMP_GT_U64, false},
+    {0xe5u, Opcode::V_CMP_NE_U64, false},  {0xe6u, Opcode::V_CMP_GE_U64, false},
+    {0xe7u, Opcode::V_CMP_T_U64, false},   {0xf0u, Opcode::V_CMPX_F_U64, false},
+    {0xf1u, Opcode::V_CMPX_LT_U64, false}, {0xf2u, Opcode::V_CMPX_EQ_U64, false},
+    {0xf3u, Opcode::V_CMPX_LE_U64, false}, {0xf4u, Opcode::V_CMPX_GT_U64, false},
+    {0xf5u, Opcode::V_CMPX_NE_U64, false}, {0xf6u, Opcode::V_CMPX_GE_U64, false},
+    {0xf7u, Opcode::V_CMPX_T_U64, false},  {0xc9u, Opcode::V_CMP_LT_F16},
     {0xcau, Opcode::V_CMP_EQ_F16},         {0xcbu, Opcode::V_CMP_LE_F16},
     {0xccu, Opcode::V_CMP_GT_F16},         {0xcdu, Opcode::V_CMP_LG_F16},
     {0xceu, Opcode::V_CMP_GE_F16},         {0xe9u, Opcode::V_CMP_NGE_F16},
@@ -477,6 +489,7 @@ bool IsVop1FloatSourceOpcode(Opcode opcode) {
 		case Opcode::V_CVT_F32_F64:
 		case Opcode::V_CVT_F64_F32:
 		case Opcode::V_RCP_F64:
+		case Opcode::V_FRACT_F64:
 		case Opcode::V_MOV_B32:
 		case Opcode::V_CVT_F32_F16:
 		case Opcode::V_CVT_U32_F32:
@@ -738,7 +751,7 @@ void DecodeVop1Dpp(uint32_t pc, std::span<const uint32_t> code, uint32_t word_in
                    uint32_t opcode, uint32_t vdst, Instruction& inst) {
 	if (inst.opcode == Opcode::V_CVT_F64_I32 || inst.opcode == Opcode::V_CVT_F32_F64 ||
 	    inst.opcode == Opcode::V_CVT_F64_F32 || inst.opcode == Opcode::V_CVT_F64_U32 ||
-	    inst.opcode == Opcode::V_RCP_F64) {
+	    inst.opcode == Opcode::V_RCP_F64 || inst.opcode == Opcode::V_FRACT_F64) {
 		SetUnsupported(inst, Family::VOP1, opcode, "FP64 instructions do not support DPP");
 		return;
 	}
@@ -1152,10 +1165,15 @@ VopcSdwaFields DecodeVopcSdwaFields(uint32_t modifier) {
 	return fields;
 }
 
+// The V_CMP and V_CMPX 64-bit integer compares are contiguous in the opcode enum.
+bool IsVopcInteger64Compare(Opcode opcode) {
+	return opcode >= Opcode::V_CMP_F_I64 && opcode <= Opcode::V_CMPX_T_U64;
+}
+
 bool SupportsVopcSdwa(Opcode opcode) {
 	return opcode != Opcode::UNSUPPORTED && opcode != Opcode::V_CMP_EQ_F64 &&
 	       opcode != Opcode::V_CMP_LE_F64 && opcode != Opcode::V_CMPX_LE_F64 &&
-	       opcode != Opcode::V_CMPX_GE_F64;
+	       opcode != Opcode::V_CMPX_GE_F64 && !IsVopcInteger64Compare(opcode);
 }
 
 void DecodeVopcSdwa(uint32_t pc, std::span<const uint32_t> code, uint32_t word_index,
@@ -1506,9 +1524,22 @@ bool IsVopcCompareExec(Opcode opcode) {
 		case Opcode::V_CMPX_GT_U32:
 		case Opcode::V_CMPX_NE_U32:
 		case Opcode::V_CMPX_GE_U32:
+		case Opcode::V_CMPX_F_I64:
+		case Opcode::V_CMPX_LT_I64:
+		case Opcode::V_CMPX_EQ_I64:
+		case Opcode::V_CMPX_LE_I64:
+		case Opcode::V_CMPX_GT_I64:
 		case Opcode::V_CMPX_NE_I64:
+		case Opcode::V_CMPX_GE_I64:
+		case Opcode::V_CMPX_T_I64:
+		case Opcode::V_CMPX_F_U64:
+		case Opcode::V_CMPX_LT_U64:
+		case Opcode::V_CMPX_EQ_U64:
 		case Opcode::V_CMPX_LE_U64:
+		case Opcode::V_CMPX_GT_U64:
 		case Opcode::V_CMPX_NE_U64:
+		case Opcode::V_CMPX_GE_U64:
+		case Opcode::V_CMPX_T_U64:
 		case Opcode::V_CMPX_LT_I16:
 		case Opcode::V_CMPX_EQ_I16:
 		case Opcode::V_CMPX_LE_I16:
