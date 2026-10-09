@@ -12,6 +12,7 @@ import {
 	type WindowBounds,
 } from '../../shared/settings';
 import { gameSettingsMap, readGameSettings, readInputMapping, type Getter } from './gameSettings';
+import { normalizeGameDirectories } from '../library/paths';
 import type { IniDocument } from './qsettingsIni';
 import { normalizeColor, toQBool, toQInt, toQString, toQStringList } from './qtValues';
 
@@ -110,9 +111,10 @@ function readPrefs(get: Getter): { prefs: LauncherPrefs; window: WindowBounds } 
 
 export function readKytySettings(doc: IniDocument, platform: Platform): KytySettings {
 	const launcherGet = getter(doc, SECTION_LAUNCHER);
-	let gameDirs = stringList(launcherGet('game_dirs'));
+	// ConfigurationListWidget::ReadSettings normalizes the folders as it reads them.
+	let gameDirs = normalizeGameDirectories(stringList(launcherGet('game_dirs')), platform);
 	if (gameDirs.length === 0) {
-		gameDirs = stringList(launcherGet('game_dir'));
+		gameDirs = normalizeGameDirectories(stringList(launcherGet('game_dir')), platform);
 	}
 
 	const globalGet = getter(doc, SECTION_GLOBAL);

@@ -157,7 +157,7 @@ export function App() {
 
 	return (
 		<div className={`app ${modals.length > 0 ? 'has-modal' : ''}`}>
-			<Background image={art} blur={blur} dim={dim} animate={app?.prefs.animated_background ?? true} paused={run.running} />
+			<Background image={art} blur={blur} dim={dim} animate={(app?.prefs.animated_background ?? true) && !matchMedia('(prefers-reduced-motion: reduce)').matches} paused={run.running} />
 			<main className="screens">
 				<ScreenView key={top.key} screen={top} />
 			</main>
