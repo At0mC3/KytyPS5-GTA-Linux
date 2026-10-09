@@ -33,17 +33,15 @@ Builds of this fork for Windows, macOS and Linux are published on the
 
 ## Console-style launcher
 
-Next to the Qt launcher, this fork ships a launcher built with Electron that looks like a game
-console dashboard and works with a controller, a keyboard or a mouse: game tiles over the
-selected game's art (drawn on the GPU), full-screen mode (F11 or the controller's Create
-button), an on-screen keyboard, and every setting of the Qt launcher, plus trophies, cheats and
-input mapping. Both launchers share the same settings file. Start it with `kyty-launcher.sh` on
-Linux, `KytyPS5 Launcher.cmd` on Windows or `KytyPS5 Launcher.app` on macOS.
+[KytyPS5 Dashboard](https://github.com/At0mC3/KytyPS5-Dashboard) is a separate launcher that
+looks like a game console dashboard and works with a controller, a keyboard or a mouse: game
+tiles over the selected game's art (drawn on the GPU), full-screen mode (F11 or the controller's
+Create button), an on-screen keyboard, and every setting of the Qt launcher, plus trophies,
+cheats and input mapping. It shares the Qt launcher's settings file.
 
-It is developed in its own repository, [KytyPS5-Dashboard](https://github.com/At0mC3/KytyPS5-Dashboard),
-and the release archives here include it. For a build made from source, extract a
-[Dashboard release](https://github.com/At0mC3/KytyPS5-Dashboard/releases) into the install
-folder, next to `kyty_emulator`. It reads devices, archives and trophies through
+Install it from its [releases](https://github.com/At0mC3/KytyPS5-Dashboard/releases) (AppImage,
+Windows setup program or macOS disk image), anywhere you like; on first start it asks for the
+KytyPS5 folder, the one with `kyty_emulator`. It reads devices, archives and trophies through
 `kyty_emulator --query` (`src/query/`).
 
 ![Launcher](docs/screenshots/launcher-home.png)

@@ -16,10 +16,6 @@ env:
   SCCACHE_GHA_ENABLED: "true"
   KYTY_BUILD_ORIGIN: ${{ github.repository != 'KytyPS5/KytyPS5' && 'Fork' || github.event_name == 'push' && 'Official' || 'Source' }}
   KYTY_BUILD_REPOSITORY: ${{ github.repository }}
-  # The console-style launcher is built and released in its own repository; each platform job
-  # adds this release of it to the install tree.
-  KYTY_DASHBOARD_REPO: At0mC3/KytyPS5-Dashboard
-  KYTY_DASHBOARD_VERSION: v1.0.0
 
 jobs:
   metadata:
@@ -138,17 +134,6 @@ jobs:
         shell: cmd
         run: |
           cmake --install _Build/windows --prefix _Build/windows/install
-
-      - name: Add dashboard launcher
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release download "$KYTY_DASHBOARD_VERSION" --repo "$KYTY_DASHBOARD_REPO" \
-            --pattern KytyPS5-Dashboard-windows-x64.zip --dir "$RUNNER_TEMP"
-          7z x -y -o_Build/windows/install "$RUNNER_TEMP/KytyPS5-Dashboard-windows-x64.zip" > /dev/null
-          test -f _Build/windows/install/launcher-electron/kyty-launcher.exe
-          test -f "_Build/windows/install/KytyPS5 Launcher.cmd"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -269,27 +254,11 @@ jobs:
           install -m 644 "$package/LICENSE" "$app_dir/Contents/Resources/LICENSE.MoltenVK"
           codesign --force --sign - --timestamp=none "$app_dir"
 
-      - name: Add dashboard launcher
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release download "$KYTY_DASHBOARD_VERSION" --repo "$KYTY_DASHBOARD_REPO" \
-            --pattern KytyPS5-Dashboard-macos-x86_64.zip --dir "$RUNNER_TEMP"
-          unzip -q "$RUNNER_TEMP/KytyPS5-Dashboard-macos-x86_64.zip" -d _Build/macos/install
-          codesign --force --deep --sign - --timestamp=none "_Build/macos/install/KytyPS5 Launcher.app"
-
       - name: Verify artifacts
         shell: bash
         run: |
           install_dir="_Build/macos/install"
           app_dir="$install_dir/KytyPS5.app"
-          launcher_app="$install_dir/KytyPS5 Launcher.app"
-          test -d "$launcher_app"
-          for binary in "$launcher_app"/Contents/MacOS/*; do
-            lipo "$binary" -verify_arch x86_64
-          done
-          codesign --verify --deep --strict --verbose=2 "$launcher_app"
           test -d "$app_dir"
           for binary in \
             "$install_dir/kyty_emulator" \
@@ -363,9 +332,7 @@ jobs:
             libxtst-dev \
             lld \
             pkg-config \
-            wayland-protocols \
-            mesa-vulkan-drivers \
-            xvfb
+            wayland-protocols
 
       - name: Install Qt 6.10.3
         uses: jurplel/install-qt-action@v4
@@ -444,30 +411,12 @@ jobs:
         run: |
           cmake --install _Build/linux --prefix _Build/linux/install
 
-      - name: Add dashboard launcher
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release download "$KYTY_DASHBOARD_VERSION" --repo "$KYTY_DASHBOARD_REPO" \
-            --pattern KytyPS5-Dashboard-linux-x64.tar.gz --dir "$RUNNER_TEMP"
-          tar -xzf "$RUNNER_TEMP/KytyPS5-Dashboard-linux-x64.tar.gz" -C _Build/linux/install
-
-      - name: Test dashboard launcher
-        shell: bash
-        run: |
-          # The released launcher finds this emulator and lists its devices.
-          xvfb-run -a _Build/linux/install/kyty-launcher.sh --self-test | tee self-test.json
-          grep -q '"queryAvailable":true' self-test.json
-
       - name: Verify artifacts
         shell: bash
         run: |
           file _Build/linux/install/launcher
           file _Build/linux/install/kyty_emulator
           file _Build/linux/install/kyty_emulator | grep -q "ELF 64-bit LSB .*x86-64"
-          test -x _Build/linux/install/kyty-launcher.sh
-          file _Build/linux/install/launcher-electron/kyty-launcher | grep -q "ELF 64-bit LSB .*x86-64"
           ldd _Build/linux/install/kyty_emulator > /dev/null
           readelf -d _Build/linux/install/launcher | grep -q 'RPATH.*\$ORIGIN/lib'
           while IFS= read -r -d '' binary; do
@@ -558,11 +507,7 @@ jobs:
           test -d "$linux_dir"
           chmod a+x \
             "$linux_dir/launcher" \
-            "$linux_dir/kyty_emulator" \
-            "$linux_dir/kyty-launcher.sh" \
-            "$linux_dir/launcher-electron/kyty-launcher" \
-            "$linux_dir/launcher-electron/chrome_crashpad_handler" \
-            "$linux_dir/launcher-electron/chrome-sandbox"
+            "$linux_dir/kyty_emulator"
           tar -C "$linux_dir" -czf \
             "$GITHUB_WORKSPACE/$RELEASE_NAME-Linux-x86_64.tar.gz" .
 
