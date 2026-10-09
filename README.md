@@ -38,8 +38,13 @@ console dashboard and works with a controller, a keyboard or a mouse: game tiles
 selected game's art (drawn on the GPU), full-screen mode (F11 or the controller's Create
 button), an on-screen keyboard, and every setting of the Qt launcher, plus trophies, cheats and
 input mapping. Both launchers share the same settings file. Start it with `kyty-launcher.sh` on
-Linux, `KytyPS5 Launcher.cmd` on Windows or `KytyPS5 Launcher.app` on macOS. See
-[src/launcher-electron/README.md](src/launcher-electron/README.md).
+Linux, `KytyPS5 Launcher.cmd` on Windows or `KytyPS5 Launcher.app` on macOS.
+
+It is developed in its own repository, [KytyPS5-Dashboard](https://github.com/At0mC3/KytyPS5-Dashboard),
+and the release archives here include it. For a build made from source, extract a
+[Dashboard release](https://github.com/At0mC3/KytyPS5-Dashboard/releases) into the install
+folder, next to `kyty_emulator`. It reads devices, archives and trophies through
+`kyty_emulator --query` (`src/query/`).
 
 ![Launcher](docs/screenshots/launcher-home.png)
 

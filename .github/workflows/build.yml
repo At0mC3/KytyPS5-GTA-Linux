@@ -16,6 +16,10 @@ env:
   SCCACHE_GHA_ENABLED: "true"
   KYTY_BUILD_ORIGIN: ${{ github.repository != 'KytyPS5/KytyPS5' && 'Fork' || github.event_name == 'push' && 'Official' || 'Source' }}
   KYTY_BUILD_REPOSITORY: ${{ github.repository }}
+  # The console-style launcher is built and released in its own repository; each platform job
+  # adds this release of it to the install tree.
+  KYTY_DASHBOARD_REPO: At0mC3/KytyPS5-Dashboard
+  KYTY_DASHBOARD_VERSION: v1.0.0
 
 jobs:
   metadata:
@@ -135,23 +139,16 @@ jobs:
         run: |
           cmake --install _Build/windows --prefix _Build/windows/install
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: src/launcher-electron/package-lock.json
-
-      - name: Build Electron launcher
+      - name: Add dashboard launcher
         shell: bash
-        working-directory: src/launcher-electron
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          npm ci
-          npm run typecheck
-          npm test
-          npm run package
-          node scripts/copy-to-install.mjs "$GITHUB_WORKSPACE/_Build/windows/install"
-          test -f "$GITHUB_WORKSPACE/_Build/windows/install/launcher-electron/kyty-launcher.exe"
+          gh release download "$KYTY_DASHBOARD_VERSION" --repo "$KYTY_DASHBOARD_REPO" \
+            --pattern KytyPS5-Dashboard-windows-x64.zip --dir "$RUNNER_TEMP"
+          7z x -y -o_Build/windows/install "$RUNNER_TEMP/KytyPS5-Dashboard-windows-x64.zip" > /dev/null
+          test -f _Build/windows/install/launcher-electron/kyty-launcher.exe
+          test -f "_Build/windows/install/KytyPS5 Launcher.cmd"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -272,24 +269,15 @@ jobs:
           install -m 644 "$package/LICENSE" "$app_dir/Contents/Resources/LICENSE.MoltenVK"
           codesign --force --sign - --timestamp=none "$app_dir"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: src/launcher-electron/package-lock.json
-
-      - name: Build Electron launcher
+      - name: Add dashboard launcher
         shell: bash
-        working-directory: src/launcher-electron
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          npm ci
-          npm run typecheck
-          npm test
-          # x86_64 like the emulator, which runs under Rosetta on Apple silicon.
-          npm run package -- --x64
-          node scripts/copy-to-install.mjs "$GITHUB_WORKSPACE/_Build/macos/install"
-          codesign --force --deep --sign - --timestamp=none "$GITHUB_WORKSPACE/_Build/macos/install/KytyPS5 Launcher.app"
+          gh release download "$KYTY_DASHBOARD_VERSION" --repo "$KYTY_DASHBOARD_REPO" \
+            --pattern KytyPS5-Dashboard-macos-x86_64.zip --dir "$RUNNER_TEMP"
+          unzip -q "$RUNNER_TEMP/KytyPS5-Dashboard-macos-x86_64.zip" -d _Build/macos/install
+          codesign --force --deep --sign - --timestamp=none "_Build/macos/install/KytyPS5 Launcher.app"
 
       - name: Verify artifacts
         shell: bash
@@ -456,44 +444,21 @@ jobs:
         run: |
           cmake --install _Build/linux --prefix _Build/linux/install
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: src/launcher-electron/package-lock.json
-
-      - name: Build Electron launcher
+      - name: Add dashboard launcher
         shell: bash
-        working-directory: src/launcher-electron
-        run: |
-          npm ci
-          npm run typecheck
-          npm test
-          npm run package
-          node scripts/copy-to-install.mjs "$GITHUB_WORKSPACE/_Build/linux/install"
-
-      - name: Test Electron launcher
-        shell: bash
-        working-directory: src/launcher-electron
         env:
-          KYTY_REAL_EMULATOR: ${{ github.workspace }}/_Build/linux/install/kyty_emulator
+          GH_TOKEN: ${{ github.token }}
         run: |
-          xvfb-run -a -s "-screen 0 1920x1080x24" npx playwright test
-          # The GPU-rendered background, through SwiftShader on the runner.
-          KYTY_E2E_SWIFTSHADER=1 xvfb-run -a -s "-screen 0 1920x1080x24" npx playwright test smoke
-          KYTY_E2E_SIZE=1080 KYTY_E2E_SWIFTSHADER=1 xvfb-run -a -s "-screen 0 1920x1200x24" npx playwright test tour
-          # The packaged app finds the emulator and lists its devices.
-          xvfb-run -a "$GITHUB_WORKSPACE/_Build/linux/install/kyty-launcher.sh" --self-test | tee self-test.json
-          grep -q '"queryAvailable":true' self-test.json
+          gh release download "$KYTY_DASHBOARD_VERSION" --repo "$KYTY_DASHBOARD_REPO" \
+            --pattern KytyPS5-Dashboard-linux-x64.tar.gz --dir "$RUNNER_TEMP"
+          tar -xzf "$RUNNER_TEMP/KytyPS5-Dashboard-linux-x64.tar.gz" -C _Build/linux/install
 
-      - name: Upload launcher screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: KytyPS5-Launcher-screenshots
-          path: src/launcher-electron/test-results/screenshots/**
-          if-no-files-found: ignore
+      - name: Test dashboard launcher
+        shell: bash
+        run: |
+          # The released launcher finds this emulator and lists its devices.
+          xvfb-run -a _Build/linux/install/kyty-launcher.sh --self-test | tee self-test.json
+          grep -q '"queryAvailable":true' self-test.json
 
       - name: Verify artifacts
         shell: bash
