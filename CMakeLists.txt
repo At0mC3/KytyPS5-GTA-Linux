@@ -242,6 +242,8 @@ file(GLOB kyty_emulator_src CONFIGURE_DEPENDS
 	"${KYTY_SOURCE_DIR}/kernel/*.h"
 	"${KYTY_SOURCE_DIR}/loader/*.cpp"
 	"${KYTY_SOURCE_DIR}/loader/*.h"
+	"${KYTY_SOURCE_DIR}/query/*.cpp"
+	"${KYTY_SOURCE_DIR}/query/*.h"
 )
 
 find_program(KYTY_GLSLANG_VALIDATOR glslangValidator REQUIRED)
@@ -427,6 +429,13 @@ add_executable(archive_file_tests EXCLUDE_FROM_ALL
 )
 target_link_libraries(archive_file_tests common ZArchive::zarchive)
 target_include_directories(archive_file_tests PRIVATE ${inc_headers})
+
+add_executable(launcher_query_tests EXCLUDE_FROM_ALL
+	"${KYTY_TESTS_DIR}/LauncherQueryTests.cpp"
+	"${KYTY_SOURCE_DIR}/query/contentQuery.cpp"
+)
+target_link_libraries(launcher_query_tests common ZArchive::zarchive nlohmann_json::nlohmann_json)
+target_include_directories(launcher_query_tests PRIVATE ${inc_headers})
 
 add_executable(trophy_system_tests EXCLUDE_FROM_ALL
 	"${KYTY_TESTS_DIR}/TrophySystemTests.cpp"
@@ -635,6 +644,14 @@ if(BUILD_TESTING)
 	add_test(NAME emulator_user_name_too_long
 	         COMMAND $<TARGET_FILE:kyty_emulator> --help --user-name 12345678901234567)
 	set_tests_properties(emulator_user_name_too_long PROPERTIES WILL_FAIL TRUE)
+	add_test(NAME emulator_query_info
+	         COMMAND $<TARGET_FILE:kyty_emulator> --query info)
+	set_tests_properties(emulator_query_info PROPERTIES
+		PASS_REGULAR_EXPRESSION "KYTY_QUERY_RESULT [{].*\"gpus\"")
+	add_test(NAME emulator_query_unknown
+	         COMMAND $<TARGET_FILE:kyty_emulator> --query unknown)
+	set_tests_properties(emulator_query_unknown PROPERTIES WILL_FAIL TRUE)
+	add_test(NAME launcher_query COMMAND $<TARGET_FILE:launcher_query_tests>)
 	add_test(NAME emulator_present_mode_cli
 	         COMMAND $<TARGET_FILE:kyty_emulator> --help --present-mode Immediate)
 	add_test(NAME emulator_present_mode_invalid
@@ -723,6 +740,7 @@ if(BUILD_TESTING)
 		memory_tracker_tests
 		page_manager_tests
 		archive_file_tests
+		launcher_query_tests
 		trophy_system_tests
 		avplayer_file_tests
 		bit_array_tests

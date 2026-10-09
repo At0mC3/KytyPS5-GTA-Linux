@@ -8,6 +8,7 @@
 #include "common/virtualMemory.h"
 #include "emulator.h"
 #include "kytyGitVersion.h"
+#include "query/launcherQuery.h"
 
 #include <charconv>
 #include <cstdio>
@@ -104,6 +105,8 @@ static void PrintUsage() {
 #endif
 	::printf("  --keymap <Control=Input>             DualSense mapping; may be repeated.\n");
 	::printf("  --rd                                 Enable RenderDoc capture.\n");
+	::printf("\nkyty_emulator --query <info|archives|trophies|controller>\n");
+	::printf("  Answers launcher queries as one JSON line; see src/query/launcherQuery.h.\n");
 }
 
 static bool NextArg(int argc, char* argv[], int& index, std::string& out) {
@@ -497,6 +500,10 @@ static bool ParseArgs(int argc, char* argv[], RunOptions& options, bool& show_he
 static int Main(int argc, char* argv[]) {
 	VirtualMemory::Init();
 	InitializeThreads();
+
+	if (argc >= 3 && std::string_view(argv[1]) == "--query") {
+		return Query::Run(argc, argv);
+	}
 
 	RunOptions options;
 	bool       show_help = false;

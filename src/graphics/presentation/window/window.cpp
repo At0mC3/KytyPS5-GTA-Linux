@@ -762,6 +762,26 @@ void WindowContext::Run() {
 	}
 }
 
+void ConfigureVulkanLoaderPath() {
+#if defined(__APPLE__)
+	// Select the bundled MoltenVK loader before SDL loads Vulkan. Keep an explicit user
+	// override, and fall back to SDL's normal loader search when no bundle is present.
+	if (std::getenv("SDL_VULKAN_LIBRARY") == nullptr) {
+		if (const char* base_path = SDL_GetBasePath(); base_path != nullptr) {
+			const std::string base_path_str = base_path;
+			std::string moltenvk_path = base_path_str + "libMoltenVK.dylib";
+			if (!Common::File::IsFileExisting(moltenvk_path)) {
+				moltenvk_path = base_path_str + "../Frameworks/libMoltenVK.dylib";
+			}
+			if (Common::File::IsFileExisting(moltenvk_path) &&
+			    SDL_setenv_unsafe("SDL_VULKAN_LIBRARY", moltenvk_path.c_str(), 0) == 0) {
+				LOGF("Vulkan loader: %s\n", moltenvk_path.c_str());
+			}
+		}
+	}
+#endif
+}
+
 static void WindowCreate(WindowContext& context) {
 	EXIT_IF(context.window != nullptr);
 	EXIT_IF(context.graphic_ctx.screen_width == 0);
@@ -783,24 +803,9 @@ static void WindowCreate(WindowContext& context) {
 	LOGF("WindowCreate(): width = %d, height = %d\n", width, height);
 
 	uint32_t window_flags = WindowContext::InitialWindowFlags(Config::FullscreenEnabled());
+	// SDL loads Vulkan while creating a Vulkan window.
+	ConfigureVulkanLoaderPath();
 #if defined(__APPLE__)
-	// SDL loads Vulkan while creating a Vulkan window, so select the bundled
-	// MoltenVK loader before calling SDL_CreateWindow. Keep an explicit user
-	// override, and fall back to SDL's normal loader search when no bundle is present.
-	if (std::getenv("SDL_VULKAN_LIBRARY") == nullptr) {
-		if (const char* base_path = SDL_GetBasePath(); base_path != nullptr) {
-			const std::string base_path_str = base_path;
-			std::string moltenvk_path = base_path_str + "libMoltenVK.dylib";
-			if (!Common::File::IsFileExisting(moltenvk_path)) {
-				moltenvk_path = base_path_str + "../Frameworks/libMoltenVK.dylib";
-			}
-			if (Common::File::IsFileExisting(moltenvk_path) &&
-			    SDL_setenv_unsafe("SDL_VULKAN_LIBRARY", moltenvk_path.c_str(), 0) == 0) {
-				LOGF("Vulkan loader: %s\n", moltenvk_path.c_str());
-			}
-		}
-	}
-
 	// macOS 26 window chrome (CoreUI asset decode, SwiftUI titlebar) has been observed
 	// throwing NSExceptions under Rosetta during the first CATransaction commit. A
 	// borderless window skips that machinery entirely.

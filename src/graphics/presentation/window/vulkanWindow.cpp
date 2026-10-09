@@ -1130,4 +1130,116 @@ WindowContext::~WindowContext() {
 	SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
 }
 
+static const char* DeviceTypeName(vk::PhysicalDeviceType type) {
+	switch (type) {
+		case vk::PhysicalDeviceType::eIntegratedGpu: return "integrated";
+		case vk::PhysicalDeviceType::eDiscreteGpu: return "discrete";
+		case vk::PhysicalDeviceType::eVirtualGpu: return "virtual";
+		case vk::PhysicalDeviceType::eCpu: return "cpu";
+		default: return "other";
+	}
+}
+
+bool EnumerateVulkanDevices(std::vector<VulkanDeviceInfo>& devices, std::string& error) {
+	devices.clear();
+	ConfigureVulkanLoaderPath();
+	if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) {
+		error = fmt::format("Video is unavailable: {}", SDL_GetError());
+		return false;
+	}
+	bool ok = false;
+	if (!SDL_Vulkan_LoadLibrary(nullptr)) {
+		error = fmt::format("Could not load Vulkan: {}", SDL_GetError());
+		SDL_QuitSubSystem(SDL_INIT_VIDEO);
+		return false;
+	}
+	auto get_instance_proc_addr =
+	    reinterpret_cast<PFN_vkGetInstanceProcAddr>(SDL_Vulkan_GetVkGetInstanceProcAddr());
+	if (get_instance_proc_addr != nullptr) {
+		VULKAN_HPP_DEFAULT_DISPATCHER.init(get_instance_proc_addr);
+
+		// The same instance extensions as VulkanGetExtensions(), without validation layers.
+		uint32_t           count      = 0;
+		const char* const* sdl_names  = SDL_Vulkan_GetInstanceExtensions(&count);
+		std::vector<const char*> extensions;
+		if (sdl_names != nullptr) {
+			extensions.assign(sdl_names, sdl_names + count);
+		}
+		uint32_t available_count = 0;
+		std::vector<vk::ExtensionProperties> available;
+		if (vk::enumerateInstanceExtensionProperties(nullptr, &available_count, nullptr) ==
+		    vk::Result::eSuccess) {
+			available.resize(available_count);
+			if (vk::enumerateInstanceExtensionProperties(nullptr, &available_count,
+			                                             available.data()) != vk::Result::eSuccess) {
+				available.clear();
+			}
+			available.resize(std::min<size_t>(available.size(), available_count));
+		}
+		if (HasExtension(available, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+		}
+
+		vk::ApplicationInfo app_info {};
+		app_info.pApplicationName   = "Kyty";
+		app_info.applicationVersion = 1;
+		app_info.pEngineName        = "Kyty";
+		app_info.engineVersion      = 1;
+		app_info.apiVersion         = VULKAN_TARGET_API_VERSION; // NOLINT
+
+		vk::InstanceCreateInfo inst_info {};
+#if defined(__APPLE__)
+		if (HasExtension(available, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)) {
+			if (!HasExtension(extensions, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME)) {
+				extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+			}
+			inst_info.flags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+		}
+#endif
+		inst_info.pApplicationInfo        = &app_info;
+		inst_info.enabledExtensionCount   = static_cast<uint32_t>(extensions.size());
+		inst_info.ppEnabledExtensionNames = extensions.data();
+
+		vk::Instance instance = nullptr;
+		if (vk::createInstance(&inst_info, nullptr, &instance) == vk::Result::eSuccess) {
+			VULKAN_HPP_DEFAULT_DISPATCHER.init(instance);
+			uint32_t device_count = 0;
+			std::vector<vk::PhysicalDevice> physical;
+			if (instance.enumeratePhysicalDevices(&device_count, nullptr) == vk::Result::eSuccess) {
+				physical.resize(device_count);
+				if (instance.enumeratePhysicalDevices(&device_count, physical.data()) ==
+				    vk::Result::eSuccess) {
+					physical.resize(device_count);
+					ok = true;
+				}
+			}
+			for (uint32_t index = 0; ok && index < physical.size(); index++) {
+				vk::PhysicalDeviceProperties properties {};
+				physical[index].getProperties(&properties);
+				VulkanDeviceInfo info;
+				info.index          = index;
+				info.name           = properties.deviceName.data();
+				info.type           = DeviceTypeName(properties.deviceType);
+				info.api_version    = properties.apiVersion;
+				info.vendor_id      = properties.vendorID;
+				info.device_id      = properties.deviceID;
+				info.driver_version = properties.driverVersion;
+				info.supports_target_api = properties.apiVersion >= VULKAN_TARGET_API_VERSION;
+				devices.push_back(std::move(info));
+			}
+			if (!ok) {
+				error = "Could not list Vulkan devices";
+			}
+			instance.destroy(nullptr);
+		} else {
+			error = "Could not create a Vulkan instance";
+		}
+	} else {
+		error = fmt::format("Could not load Vulkan: {}", SDL_GetError());
+	}
+	SDL_Vulkan_UnloadLibrary();
+	SDL_QuitSubSystem(SDL_INIT_VIDEO);
+	return ok;
+}
+
 } // namespace Libs::Graphics
