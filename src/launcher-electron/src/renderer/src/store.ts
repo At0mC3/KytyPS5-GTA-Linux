@@ -32,6 +32,8 @@ interface Store {
 	run: RunState;
 	log: LogLine[];
 	selectedId?: string;
+	// The game selected last time (from Kyty.ini), applied when the library arrives.
+	preferredGamePath?: string;
 	screens: Screen[];
 	modals: Modal[];
 	toasts: Toast[];
@@ -40,6 +42,7 @@ interface Store {
 	launching?: string;
 	setApp(app: AppState): void;
 	setGames(games: Game[]): void;
+	setPreferredGame(gamePath: string): void;
 	setRun(run: RunState): void;
 	appendLog(lines: LogLine[]): void;
 	setLog(lines: LogLine[]): void;
@@ -70,9 +73,14 @@ export const useStore = create<Store>((set, get) => ({
 	renderer: 'pending',
 	setApp: (app) => set({ app }),
 	setGames: (games) => {
-		const selected = get().selectedId;
-		set({ games, selectedId: selected !== undefined && games.some((game) => game.id === selected) ? selected : games[0]?.id });
+		let selected = get().selectedId;
+		if (selected === undefined || !games.some((game) => game.id === selected)) {
+			const preferred = games.find((game) => game.gamePath === get().preferredGamePath);
+			selected = (preferred ?? games[0])?.id;
+		}
+		set({ games, selectedId: selected });
 	},
+	setPreferredGame: (preferredGamePath) => set({ preferredGamePath }),
 	setRun: (run) => set({ run }),
 	appendLog: (lines) => {
 		const log = get().log.concat(lines);

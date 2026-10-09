@@ -8,6 +8,17 @@ export type Direction = 'up' | 'down' | 'left' | 'right';
 const SELECTOR = '[data-nav]';
 const groupMemory = new WeakMap<Element, HTMLElement>();
 
+// Remember the last focused element of each group, however it got focus (controller, mouse).
+if (typeof document !== 'undefined') {
+	document.addEventListener('focusin', (event) => {
+		const target = event.target as HTMLElement | null;
+		const group = target?.matches?.(SELECTOR) === true ? target.closest('[data-nav-group]') : null;
+		if (group !== null && group !== undefined && target !== null) {
+			groupMemory.set(group, target);
+		}
+	});
+}
+
 export function activeScope(doc: Document = document): HTMLElement | null {
 	const scopes = [...doc.querySelectorAll<HTMLElement>('[data-nav-scope]')].filter((scope) => !scope.hasAttribute('data-nav-inactive'));
 	let top: HTMLElement | null = null;
@@ -63,10 +74,6 @@ function scrollIntoContainer(element: HTMLElement): void {
 
 export function focusElement(element: HTMLElement): void {
 	element.focus({ preventScroll: true });
-	const group = element.closest('[data-nav-group]');
-	if (group !== null) {
-		groupMemory.set(group, element);
-	}
 	scrollIntoContainer(element);
 }
 

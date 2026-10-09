@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { Platform } from '../../shared/settings';
 import { firmwareVersion, parseParamJson } from './paramJson';
 import { normalizeGameDirectories, qtCleanPath } from './paths';
 import { gameSize, scanGameFolders } from './scanner';
@@ -49,6 +50,8 @@ describe('paths', () => {
 });
 
 describe('scanGameFolders', () => {
+	const platform = process.platform as Platform;
+	const rel = (from: string, to: string) => path.relative(from, to).split(path.sep).join('/');
 	let root: string;
 
 	const touch = (rel: string) => {
@@ -74,8 +77,8 @@ describe('scanGameFolders', () => {
 		touch('deep/inner/two.ZAR');
 		touch('.hidden/eboot.bin');
 		touch('notes.txt');
-		const games = scanGameFolders([root], 'linux');
-		expect(games.map((game) => path.relative(root, game.basedir))).toEqual(['one.zar', 'A', 'b/Game B', 'deep/inner/two.ZAR']);
+		const games = scanGameFolders([root], platform);
+		expect(games.map((game) => rel(root, game.basedir))).toEqual(['one.zar', 'A', 'b/Game B', 'deep/inner/two.ZAR']);
 		expect(games[0]).toMatchObject({ archive: true, fallbackTitle: 'one', legacyGamePath: 'one.zar' });
 		expect(games[2]).toMatchObject({ archive: false, fallbackTitle: 'Game B', legacyGamePath: 'b/Game B' });
 	});
@@ -83,9 +86,9 @@ describe('scanGameFolders', () => {
 	it('skips duplicate folders and archives without eboot.bin', () => {
 		touch('G/eboot.bin');
 		touch('bad.zar');
-		const games = scanGameFolders([root, path.join(root, '.')], 'linux', (archive) => !archive.endsWith('bad.zar'));
+		const games = scanGameFolders([root, path.join(root, '.')], platform, (archive) => !archive.endsWith('bad.zar'));
 		expect(games).toHaveLength(1);
-		expect(normalizeGameDirectories([root, `${root}/`, ''], 'linux')).toEqual([root]);
+		expect(normalizeGameDirectories([root, `${root}/`, ''], platform)).toEqual([qtCleanPath(root, platform)]);
 	});
 
 	it('computes sizes', async () => {

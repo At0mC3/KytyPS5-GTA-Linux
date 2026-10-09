@@ -83,6 +83,8 @@ export interface AppState {
 	checkUpdatesOnStartup: boolean;
 	compatLocal: boolean;
 	fullscreen: boolean;
+	// False until the first scan of the game folders has finished.
+	libraryReady: boolean;
 	gpuFeatures: Record<string, string>;
 	testMode: boolean;
 }

@@ -70,8 +70,9 @@ test('controller tour of every screen', async () => {
 		await expect(page.locator('.osk')).toBeVisible();
 		await shot('08-keyboard');
 		await press(page, 'circle');
-		await press(page, 'circle');
-		await press(page, 'circle');
+		await expect(page.locator('.osk')).toHaveCount(0);
+		await press(page, 'ps');
+		await expect(page.locator('.home')).toBeVisible();
 
 		// Library.
 		await press(page, 'r1');
@@ -96,6 +97,35 @@ test('controller tour of every screen', async () => {
 		await page.locator('[data-testid="add-folder"]').click();
 		await expect(page.locator('.browser')).toBeVisible();
 		await shot('11-folder-browser');
+		await press(page, 'circle');
+
+		await page.locator('.settings-nav-item[data-section="launcher"]').click();
+		await shot('12-settings-launcher');
+		await page.locator('.settings-nav-item[data-section="about"]').click();
+		await shot('13-settings-about');
+		await page.locator('.settings-nav-item[data-section="controller"]').click();
+		await page.getByText('DualSense lightbar').click();
+		await shot('14-color-picker');
+		await press(page, 'circle');
+		await expect(page.locator('.color-picker')).toHaveCount(0);
+		await press(page, 'ps');
+		await expect(page.locator('.home')).toBeVisible();
+
+		// Per-game settings.
+		await press(page, 'triangle');
+		await expect(page.locator('.settings-header h1')).toHaveText('Game settings');
+		await shot('15-game-settings');
+		await press(page, 'circle');
+
+		// Trophy overview from the top bar.
+		await page.locator('[aria-label="Trophies"]').click();
+		await expect(page.locator('.trophy-game')).toHaveCount(1);
+		await shot('16-trophy-overview');
+		await press(page, 'circle');
+
+		// Cheats screen.
+		await page.locator('.card', { hasText: 'Cheats' }).click();
+		await shot('17-cheats');
 	} finally {
 		await app.close();
 		fixture.cleanup();

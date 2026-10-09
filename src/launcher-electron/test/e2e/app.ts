@@ -9,7 +9,7 @@ export interface Launched {
 
 export async function launchApp(fixture: Fixture, args: string[] = [], size = { width: 1280, height: 720 }): Promise<Launched> {
 	const app = await electron.launch({
-		args: [path.join(__dirname, '..', '..', 'out', 'main', 'index.js'), '--no-sandbox', ...(process.env.KYTY_E2E_SWIFTSHADER === '1' ? ['--enable-unsafe-swiftshader'] : []), ...args],
+		args: [path.join(__dirname, '..', '..'), '--no-sandbox', ...(process.env.KYTY_E2E_SWIFTSHADER === '1' ? ['--enable-unsafe-swiftshader'] : []), ...args],
 		cwd: fixture.root,
 		env: fixture.env,
 	});
@@ -46,7 +46,7 @@ export async function installFakeGamepad(page: Page): Promise<void> {
 	});
 }
 
-export const BUTTONS = { cross: 0, circle: 1, square: 2, triangle: 3, l1: 4, r1: 5, create: 8, options: 9, up: 12, down: 13, left: 14, right: 15 } as const;
+export const BUTTONS = { cross: 0, circle: 1, square: 2, triangle: 3, l1: 4, r1: 5, create: 8, options: 9, up: 12, down: 13, left: 14, right: 15, ps: 16 } as const;
 
 export async function press(page: Page, button: keyof typeof BUTTONS): Promise<void> {
 	const index = BUTTONS[button];

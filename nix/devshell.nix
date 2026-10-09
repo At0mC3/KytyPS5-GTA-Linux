@@ -65,6 +65,8 @@ pkgs.mkShell {
     pkg-config
     git
     glslang # provides glslangValidator for the bundled shaders
+    nodejs_22 # Electron launcher (src/launcher-electron)
+    electron
   ];
 
   buildInputs = buildDeps;
@@ -73,6 +75,9 @@ pkgs.mkShell {
     export CMAKE_PREFIX_PATH="${pkgs.qt6.qtbase}:''${CMAKE_PREFIX_PATH:-}"
     export QT_PLUGIN_PATH="${pkgs.qt6.qtbase}/lib/qt-6/plugins:${pkgs.qt6.qtbase}/lib/qt6/plugins:''${QT_PLUGIN_PATH:-}"
     export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath runtimeLibs}:''${LD_LIBRARY_PATH:-}"
+    # The Electron binary npm downloads does not run on NixOS; use the one from nixpkgs.
+    export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+    export ELECTRON_OVERRIDE_DIST_PATH="${pkgs.electron}/libexec/electron"
 
     if [ -z "''${KYTY_SHELL_QUIET:-}" ]; then
       echo "KytyPS5 dev shell"
@@ -80,6 +85,7 @@ pkgs.mkShell {
       echo "    -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++"
       echo "  cmake --build _Build/linux --target launcher --parallel"
       echo "  cmake --install _Build/linux --prefix _Build/linux/install"
+      echo "  (cd src/launcher-electron && npm ci && npm run build && npm start)"
     fi
   '';
 }

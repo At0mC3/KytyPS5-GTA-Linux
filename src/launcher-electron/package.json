@@ -33,5 +33,11 @@
     "vite": "7.3.7",
     "vitest": "5.0.3",
     "zustand": "5.0.15"
+  },
+  "author": "KytyPS5 contributors",
+  "homepage": "https://github.com/At0mC3/KytyPS5-GTA-Linux",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/At0mC3/KytyPS5-GTA-Linux.git"
   }
 }

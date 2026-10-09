@@ -31,6 +31,18 @@ Builds of this fork for Windows, macOS and Linux are published on the
   the "Windows SysV red zone crash protection" launcher option). Without it the game crashes in
   its streaming thread.
 
+## Console-style launcher
+
+Next to the Qt launcher, this fork ships a launcher built with Electron that looks like a game
+console dashboard and works with a controller, a keyboard or a mouse: game tiles over the
+selected game's art (drawn on the GPU), full-screen mode (F11 or the controller's Create
+button), an on-screen keyboard, and every setting of the Qt launcher, plus trophies, cheats and
+input mapping. Both launchers share the same settings file. Start it with `kyty-launcher.sh` on
+Linux, `KytyPS5 Launcher.cmd` on Windows or `KytyPS5 Launcher.app` on macOS. See
+[src/launcher-electron/README.md](src/launcher-electron/README.md).
+
+![Launcher](docs/screenshots/launcher-home.png)
+
 ## Fork status
 
 - 52 commits on top of upstream `main` (synced 2026-10-08).

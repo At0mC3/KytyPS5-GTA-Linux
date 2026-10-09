@@ -243,7 +243,12 @@ export function Home() {
 							</div>
 						</div>
 					)}
-					{games.length === 0 ? (
+					{games.length === 0 && app?.libraryReady !== true ? (
+						<div className="hero-empty">
+							<h1 className="hero-title">Looking for games…</h1>
+							<p className="hero-meta">Scanning your game folders.</p>
+						</div>
+					) : games.length === 0 ? (
 						<div className="hero-empty">
 							<h1 className="hero-title">{noFolders ? 'Add your games' : 'No games found'}</h1>
 							<p className="hero-meta">{noFolders ? 'Add at least one game folder to see your games here.' : 'Folders with eboot.bin and .zar archives in your game folders appear here.'}</p>

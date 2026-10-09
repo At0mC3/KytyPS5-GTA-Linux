@@ -124,6 +124,7 @@ export class LauncherService extends EventEmitter<ServiceEvents> {
 	settingsError: string | undefined;
 	emulator: EmulatorInfo = { found: false, queryAvailable: false, updateCheckSupported: false, gpus: [], microphones: [] };
 	fullscreen = false;
+	libraryReady = false;
 	readonly runner = new GameRunner();
 	readonly controller: ControllerHelper;
 	private records = new Map<string, GameRecord>();
@@ -287,6 +288,7 @@ export class LauncherService extends EventEmitter<ServiceEvents> {
 			checkUpdatesOnStartup: this.settings.checkUpdatesOnStartup,
 			compatLocal: this.compat.local,
 			fullscreen: this.fullscreen,
+			libraryReady: this.libraryReady,
 			gpuFeatures: this.options.gpuFeatures(),
 			testMode: this.options.testMode,
 		};
@@ -490,6 +492,10 @@ export class LauncherService extends EventEmitter<ServiceEvents> {
 			return ta.localeCompare(tb, undefined, { sensitivity: 'base' });
 		});
 		this.emitLibrary();
+		if (!this.libraryReady) {
+			this.libraryReady = true;
+			this.emitState();
+		}
 		void this.computeSizes();
 		void this.loadTrophySummaries();
 		return this.library();

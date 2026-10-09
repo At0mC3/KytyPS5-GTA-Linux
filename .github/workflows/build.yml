@@ -122,17 +122,36 @@ jobs:
             audio_out2_port_tests pad_haptics_tests controller_settings_tests ime_dialog_tests lru_cache_tests virtual_memory_allocation_tests ^
             shader_recompiler_compute_tests ^
             resource_tracking_tests scalar_provenance_tests ^
-            resource_materialization_tests shader_vertex_metadata_tests archive_file_tests avplayer_file_tests --parallel
+            resource_materialization_tests shader_vertex_metadata_tests archive_file_tests avplayer_file_tests ^
+            launcher_query_tests --parallel
 
       - name: Test
         shell: cmd
         run: |
-          ctest --test-dir _Build/windows --output-on-failure -R "^(audio_out2_port|pad_haptics|controller_settings|ime_dialog|lru_cache|resource_tracking|scalar_provenance|resource_materialization|shader_vertex_metadata|archive_file|avplayer_file|virtual_memory_allocation)$"
+          ctest --test-dir _Build/windows --output-on-failure -R "^(audio_out2_port|pad_haptics|controller_settings|ime_dialog|lru_cache|resource_tracking|scalar_provenance|resource_materialization|shader_vertex_metadata|archive_file|avplayer_file|virtual_memory_allocation|launcher_query|emulator_query_unknown)$"
 
       - name: Install
         shell: cmd
         run: |
           cmake --install _Build/windows --prefix _Build/windows/install
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/launcher-electron/package-lock.json
+
+      - name: Build Electron launcher
+        shell: bash
+        working-directory: src/launcher-electron
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run package
+          node scripts/copy-to-install.mjs "$GITHUB_WORKSPACE/_Build/windows/install"
+          test -f "$GITHUB_WORKSPACE/_Build/windows/install/launcher-electron/kyty-launcher.exe"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -212,13 +231,14 @@ jobs:
               memory_tracker_tests page_manager_tests shader_recompiler_compute_tests \
               resource_tracking_tests scalar_provenance_tests \
               resource_materialization_tests shader_vertex_metadata_tests archive_file_tests avplayer_file_tests \
+              launcher_query_tests \
             --parallel
 
       - name: Test
         shell: bash
         run: |
           ctest --test-dir _Build/macos --output-on-failure \
-            -R '^(audio_out2_port|pad_haptics|controller_settings|ime_dialog|lru_cache|memory_tracker|page_manager|resource_tracking|scalar_provenance|resource_materialization|shader_vertex_metadata|archive_file|avplayer_file|virtual_memory_allocation)$'
+            -R '^(audio_out2_port|pad_haptics|controller_settings|ime_dialog|lru_cache|memory_tracker|page_manager|resource_tracking|scalar_provenance|resource_materialization|shader_vertex_metadata|archive_file|avplayer_file|virtual_memory_allocation|launcher_query|emulator_query_unknown)$'
 
       - name: Install
         shell: bash
@@ -252,11 +272,36 @@ jobs:
           install -m 644 "$package/LICENSE" "$app_dir/Contents/Resources/LICENSE.MoltenVK"
           codesign --force --sign - --timestamp=none "$app_dir"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/launcher-electron/package-lock.json
+
+      - name: Build Electron launcher
+        shell: bash
+        working-directory: src/launcher-electron
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          # x86_64 like the emulator, which runs under Rosetta on Apple silicon.
+          npm run package -- --x64
+          node scripts/copy-to-install.mjs "$GITHUB_WORKSPACE/_Build/macos/install"
+          codesign --force --deep --sign - --timestamp=none "$GITHUB_WORKSPACE/_Build/macos/install/KytyPS5 Launcher.app"
+
       - name: Verify artifacts
         shell: bash
         run: |
           install_dir="_Build/macos/install"
           app_dir="$install_dir/KytyPS5.app"
+          launcher_app="$install_dir/KytyPS5 Launcher.app"
+          test -d "$launcher_app"
+          for binary in "$launcher_app"/Contents/MacOS/*; do
+            lipo "$binary" -verify_arch x86_64
+          done
+          codesign --verify --deep --strict --verbose=2 "$launcher_app"
           test -d "$app_dir"
           for binary in \
             "$install_dir/kyty_emulator" \
@@ -330,7 +375,9 @@ jobs:
             libxtst-dev \
             lld \
             pkg-config \
-            wayland-protocols
+            wayland-protocols \
+            mesa-vulkan-drivers \
+            xvfb
 
       - name: Install Qt 6.10.3
         uses: jurplel/install-qt-action@v4
@@ -395,18 +442,58 @@ jobs:
               audio_out2_port_tests pad_haptics_tests controller_settings_tests ime_dialog_tests lru_cache_tests virtual_memory_allocation_tests \
               resource_tracking_tests scalar_provenance_tests \
               resource_materialization_tests shader_vertex_metadata_tests archive_file_tests avplayer_file_tests \
+              launcher_query_tests \
             --parallel
 
       - name: Test
         shell: bash
         run: |
           ctest --test-dir _Build/linux --output-on-failure \
-            -R '^(audio_out2_port|pad_haptics|controller_settings|ime_dialog|lru_cache|memory_tracker|page_manager|resource_tracking|scalar_provenance|resource_materialization|shader_vertex_metadata|archive_file|avplayer_file|virtual_memory_allocation)$'
+            -R '^(audio_out2_port|pad_haptics|controller_settings|ime_dialog|lru_cache|memory_tracker|page_manager|resource_tracking|scalar_provenance|resource_materialization|shader_vertex_metadata|archive_file|avplayer_file|virtual_memory_allocation|launcher_query|emulator_query_info|emulator_query_unknown)$'
 
       - name: Install
         shell: bash
         run: |
           cmake --install _Build/linux --prefix _Build/linux/install
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/launcher-electron/package-lock.json
+
+      - name: Build Electron launcher
+        shell: bash
+        working-directory: src/launcher-electron
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run package
+          node scripts/copy-to-install.mjs "$GITHUB_WORKSPACE/_Build/linux/install"
+
+      - name: Test Electron launcher
+        shell: bash
+        working-directory: src/launcher-electron
+        env:
+          KYTY_REAL_EMULATOR: ${{ github.workspace }}/_Build/linux/install/kyty_emulator
+        run: |
+          xvfb-run -a -s "-screen 0 1920x1080x24" npx playwright test
+          # The GPU-rendered background, through SwiftShader on the runner.
+          KYTY_E2E_SWIFTSHADER=1 xvfb-run -a -s "-screen 0 1920x1080x24" npx playwright test smoke
+          KYTY_E2E_SIZE=1080 KYTY_E2E_SWIFTSHADER=1 xvfb-run -a -s "-screen 0 1920x1200x24" npx playwright test tour
+          # The packaged app finds the emulator and lists its devices.
+          xvfb-run -a "$GITHUB_WORKSPACE/_Build/linux/install/kyty-launcher.sh" --self-test | tee self-test.json
+          grep -q '"queryAvailable":true' self-test.json
+
+      - name: Upload launcher screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: KytyPS5-Launcher-screenshots
+          path: src/launcher-electron/test-results/screenshots/**
+          if-no-files-found: ignore
 
       - name: Verify artifacts
         shell: bash
@@ -414,6 +501,8 @@ jobs:
           file _Build/linux/install/launcher
           file _Build/linux/install/kyty_emulator
           file _Build/linux/install/kyty_emulator | grep -q "ELF 64-bit LSB .*x86-64"
+          test -x _Build/linux/install/kyty-launcher.sh
+          file _Build/linux/install/launcher-electron/kyty-launcher | grep -q "ELF 64-bit LSB .*x86-64"
           ldd _Build/linux/install/kyty_emulator > /dev/null
           readelf -d _Build/linux/install/launcher | grep -q 'RPATH.*\$ORIGIN/lib'
           while IFS= read -r -d '' binary; do
@@ -504,7 +593,11 @@ jobs:
           test -d "$linux_dir"
           chmod a+x \
             "$linux_dir/launcher" \
-            "$linux_dir/kyty_emulator"
+            "$linux_dir/kyty_emulator" \
+            "$linux_dir/kyty-launcher.sh" \
+            "$linux_dir/launcher-electron/kyty-launcher" \
+            "$linux_dir/launcher-electron/chrome_crashpad_handler" \
+            "$linux_dir/launcher-electron/chrome-sandbox"
           tar -C "$linux_dir" -czf \
             "$GITHUB_WORKSPACE/$RELEASE_NAME-Linux-x86_64.tar.gz" .
 

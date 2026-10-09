@@ -1,0 +1,34 @@
+# Packages the launcher as an unpacked app folder; scripts/copy-to-install.mjs puts it next to
+# kyty_emulator in the install tree.
+appId: io.github.kytyps5.launcher
+productName: KytyPS5 Launcher
+executableName: kyty-launcher
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**
+  - resources/**
+  - package.json
+asar: true
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+linux:
+  target: dir
+  category: Game
+  icon: resources/icon.png
+  executableArgs: []
+win:
+  target: dir
+  icon: resources/icon.png
+mac:
+  target: dir
+  icon: resources/icon.png
+  category: public.app-category.games
+  # Ad-hoc signature only; the release is not notarized.
+  identity: null
